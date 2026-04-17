@@ -16,7 +16,7 @@ module SOLTest.Executor
 where
 
 import Control.Exception (IOException, try)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import SOLTest.Types
 import System.Directory (doesFileExist)
 import System.Exit (ExitCode (..))
@@ -120,7 +120,7 @@ executeCombined parserPath interpPath test = do
             tcrDiffOutput = Nothing
           }
     -- \| Otherwise uses the output and feeds it to the interpreter
-    -- | Copied from 'executeExecuteOnly'
+    -- \| Copied from 'executeExecuteOnly'
     else withTempSource pOut $ \tmpPath -> do
       (iExitCode, iOut, iErr) <- runInterpreter interpPath tmpPath (tcdStdinFile test)
       let iCode = exitCodeToInt iExitCode
@@ -190,7 +190,20 @@ checkInterpreterResult ::
   -- | Path to the @.out@ file, if present.
   Maybe FilePath ->
   IO (TestResult, Maybe String)
-checkInterpreterResult actualCode expectedCodes iOut mOutFile = undefined
+checkInterpreterResult actualCode expectedCodes iOut mOutFile =
+  -- | If actual code is expected
+  if actualCode `elem` expectedCodes
+    then
+      -- | If actual code is zero
+      if actualCode == 0
+        -- | If the .out file exists, runs diff, otherwise just passes
+        then case mOutFile of
+          Just outFile -> runDiffOnOutput iOut outFile
+          Nothing -> return (Passed, Nothing)
+        else return (Passed, Nothing)
+    -- | If actual code is unexpected, fails
+    else
+      return (IntFail, Nothing)
 
 -- | Write a string to a temporary file and pass its path to an action.
 -- The file is deleted when the action returns.
