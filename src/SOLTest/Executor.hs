@@ -23,6 +23,7 @@ import System.Exit (ExitCode (..))
 import System.IO (hClose, hPutStr)
 import System.IO.Temp (withSystemTempFile)
 import System.Process (proc, readCreateProcessWithExitCode)
+import Data.Semigroup (diff)
 
 -- ---------------------------------------------------------------------------
 -- Public API
@@ -191,17 +192,17 @@ checkInterpreterResult ::
   Maybe FilePath ->
   IO (TestResult, Maybe String)
 checkInterpreterResult actualCode expectedCodes iOut mOutFile =
-  -- | If actual code is expected
+  -- \| If actual code is expected
   if actualCode `elem` expectedCodes
     then
-      -- | If actual code is zero
+      -- \| If actual code is zero
       if actualCode == 0
-        -- | If the .out file exists, runs diff, otherwise just passes
+        -- \| If the .out file exists, runs diff, otherwise just passes
         then case mOutFile of
           Just outFile -> runDiffOnOutput iOut outFile
           Nothing -> return (Passed, Nothing)
         else return (Passed, Nothing)
-    -- | If actual code is unexpected, fails
+    -- \| If actual code is unexpected, fails
     else
       return (IntFail, Nothing)
 
@@ -219,7 +220,17 @@ withTempSource content action =
 --
 -- FLP: Implement this function. It will start similarly to @withTempSource@.
 runDiffOnOutput :: String -> FilePath -> IO (TestResult, Maybe String)
-runDiffOnOutput iOut outFile = undefined
+runDiffOnOutput iOut outFile =
+    -- | Copied from 'withTempSource'
+    withSystemTempFile "output.tmp" $ \tmpPath tmpHandle -> do
+    hPutStr tmpHandle iOut
+    hClose tmpHandle
+    -- | Runs diff on temporary file and .out file and returns the result
+    (exitCode, output) <- runDiff tmpPath outFile
+    -- | Both cases (success and failure)
+    case exitCode of
+      ExitSuccess -> return (Passed, Nothing)
+      ExitFailure _ -> return (DiffFail, Just output)
 
 -- | Ensure an executable path is provided and the file is executable,
 -- then run an action with it.  Returns 'Left' 'CannotExecute' if the
