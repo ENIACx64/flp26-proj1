@@ -17,13 +17,13 @@ where
 
 import Control.Exception (IOException, try)
 import Data.Maybe (fromMaybe, isJust)
+import Data.Semigroup (diff)
 import SOLTest.Types
-import System.Directory (doesFileExist)
+import System.Directory (Permissions, doesFileExist, executable, getPermissions)
 import System.Exit (ExitCode (..))
 import System.IO (hClose, hPutStr)
 import System.IO.Temp (withSystemTempFile)
 import System.Process (proc, readCreateProcessWithExitCode)
-import Data.Semigroup (diff)
 
 -- ---------------------------------------------------------------------------
 -- Public API
@@ -221,13 +221,13 @@ withTempSource content action =
 -- FLP: Implement this function. It will start similarly to @withTempSource@.
 runDiffOnOutput :: String -> FilePath -> IO (TestResult, Maybe String)
 runDiffOnOutput iOut outFile =
-    -- | Copied from 'withTempSource'
-    withSystemTempFile "output.tmp" $ \tmpPath tmpHandle -> do
+  -- \| Copied from 'withTempSource'
+  withSystemTempFile "output.tmp" $ \tmpPath tmpHandle -> do
     hPutStr tmpHandle iOut
     hClose tmpHandle
-    -- | Runs diff on temporary file and .out file and returns the result
+    -- \| Runs diff on temporary file and .out file and returns the result
     (exitCode, output) <- runDiff tmpPath outFile
-    -- | Both cases (success and failure)
+    -- \| Both cases (success and failure)
     case exitCode of
       ExitSuccess -> return (Passed, Nothing)
       ExitFailure _ -> return (DiffFail, Just output)
@@ -263,10 +263,25 @@ checkExecutable :: FilePath -> IO (Maybe UnexecutedReason)
 checkExecutable path = do
   result <- try (doesFileExist path) :: IO (Either IOException Bool)
   case result of
+    -- \| IOException -> returns the error message
     Left err -> return (Just (UnexecutedReason CannotExecute (Just (show err))))
-    Right False -> undefined -- ???
-    Right True -> undefined -- ???
-  return Nothing -- this probably won't be here
+    -- \| File does not exist -> returns the appropriate message
+    Right False -> return (Just (UnexecutedReason CannotExecute (Just ("File " ++ path ++ " does not exist."))))
+    -- \| File does exist -> needs to check if the file is executable
+    Right True -> do
+      -- \| Gets the permissions for the file
+      getPermissionsResult <- try (getPermissions path) :: IO (Either IOException Permissions)
+      case getPermissionsResult of
+        -- \| IOException -> returns the error message
+        Left err -> return (Just (UnexecutedReason CannotExecute (Just (show err))))
+        -- \| Got permissions -> checks if the file is executable
+        Right permissions ->
+          if executable permissions
+            then
+              -- \| According to the description, this function should return 'Nothing' if the file is executable
+              return Nothing
+            -- \| Else file is not executable -> returns the appropriate message
+            else return (Just (UnexecutedReason CannotExecute (Just ("File " ++ path ++ " is not executable."))))
 
 -- | Convert 'ExitCode' to an 'Int'.
 exitCodeToInt :: ExitCode -> Int
