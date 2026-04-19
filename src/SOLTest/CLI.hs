@@ -157,6 +157,10 @@ filterSpecParser =
 buildFilterSpec :: [String] -> [String] -> [String] -> [String] -> [String] -> [String] -> FilterSpec
 buildFilterSpec include exclude ic it ec et =
   FilterSpec
+    {-| fsIncludes and fsExcludes are defined as lists of 'FilterCriterion'
+        These criteria are created by mapping their constructors to fields in the input
+        All included criteria are added to the list of criteria
+    -}
     { fsIncludes = map ByAny include ++ map ByCategory ic ++ map ByTag it,
       fsExcludes = map ByAny exclude ++ map ByCategory ec ++ map ByTag et,
       -- \| Default value
