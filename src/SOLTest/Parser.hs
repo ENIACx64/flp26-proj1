@@ -105,7 +105,28 @@ parseHeaderLine hdr line
   | "*** " `isPrefixOf` line =
       let val = trim (drop 4 line)
        in Right hdr {phDescription = Just val}
-  -- ???
+  -- \| I don't think any comments are necessary here - this is just copy-pasting and minor adjustments
+  | "+++ " `isPrefixOf` line =
+      let val = trim (drop 4 line)
+       in Right hdr {phCategory = Just val}
+  | "--- " `isPrefixOf` line =
+      let val = trim (drop 4 line)
+       in Right hdr {phTags = phTags hdr ++ [val]}
+  | ">>> " `isPrefixOf` line =
+      let val = trim (drop 4 line)
+       in case reads val of
+        [(n, "")] -> Right hdr {phWeight = Just n}
+        _ -> Left ("Invalid weight! '" ++ val ++ "' is not an integer.")
+  | "!C! " `isPrefixOf` line =
+      let val = trim (drop 4 line)
+       in case reads val of
+        [(n, "")] -> Right hdr {phParserCodes = phParserCodes hdr ++ [n]}
+        _ -> Left ("Invalid parser code! '" ++ val ++ "' is not an integer.")
+  | "!I! " `isPrefixOf` line =
+      let val = trim (drop 4 line)
+       in case reads val of
+        [(n, "")] -> Right hdr {phInterpreterCodes = phInterpreterCodes hdr ++ [n]}
+        _ -> Left ("Invalid interpreter code! '" ++ val ++ "' is not an integer.")
   | otherwise = Right hdr -- unknown or comment line: skip
 
 -- | Parse all header lines into a 'ParsedHeader'.
