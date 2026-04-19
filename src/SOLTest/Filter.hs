@@ -36,7 +36,28 @@ filterTests ::
   FilterSpec ->
   [TestCaseDefinition] ->
   ([TestCaseDefinition], [TestCaseDefinition])
-filterTests spec tests = undefined
+filterTests spec tests =
+  -- \| Using let since multiple local definitions are needed
+  let includes = fsIncludes spec
+      excludes = fsExcludes spec
+      useRegex = fsUseRegex spec
+      -- \| Filters tests by 'fsIncludes' and stores tests that pass
+      included =
+        -- \| If 'fsIncludes' is empty, stores the whole list
+        if null includes
+          then
+            tests
+          -- \| Else filters
+          else
+            filter (matchesAny useRegex includes) tests
+      -- \| Filters tests by 'fsExcludes' and stores tests that pass
+      excluded = filter (matchesAny useRegex excludes) tests
+      -- \| A predicate that returns True if a test is in the included list and not in the excluded list
+      toBeSelected test = test `elem` included && test `notElem` excluded
+      -- \| 'selected' and 'filteredOut' are the output fields (see description)
+      selected = filter toBeSelected tests
+      filteredOut = filter (not . toBeSelected) tests
+   in (selected, filteredOut)
 
 -- | Check whether a test matches at least one criterion in the list.
 matchesAny :: Bool -> [FilterCriterion] -> TestCaseDefinition -> Bool
