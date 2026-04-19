@@ -53,7 +53,15 @@ matchesAny useRegex criteria test =
 -- bonus extension, you can either remove the first argument and update the usages,
 -- or you can simply ignore the value.
 matchesCriterion :: Bool -> TestCaseDefinition -> FilterCriterion -> Bool
-matchesCriterion useRegex test criterion = undefined
+matchesCriterion useRegex test criterion =
+  -- \| Using case to branch different options
+  case criterion of
+    -- \| Returns True if any match is found
+    ByAny str -> str == tcdName test || str == tcdCategory test || str `elem` tcdTags test
+    -- \| Returns True if a match by category is found
+    ByCategory str -> str == tcdCategory test
+    -- \| Returns True if a match by tags is found
+    ByTag str -> str `elem` tcdTags test
 
 -- | Trim leading and trailing whitespace from a filter identifier.
 trimFilterId :: String -> String
