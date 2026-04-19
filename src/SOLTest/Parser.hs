@@ -78,7 +78,16 @@ emptyHeader =
 --
 -- FLP: Implement this function.
 splitHeaderBody :: String -> ([String], String)
-splitHeaderBody content = undefined
+splitHeaderBody content =
+  -- \| Divides content into lines
+  let l = lines content
+      -- \| If the line contains only whitespaces, it is considered the split point for break
+      (headerLines, body) = break (all isSpace) l
+   in case body of
+        -- \| If the body is empty, the second element of the pair is empty
+        [] -> (headerLines, "")
+        -- \| Otherwise, the rest of the content is joined back together and stored as the second element in the pair
+        (_ : bodyLines) -> (headerLines, unlines bodyLines)
 
 -- ---------------------------------------------------------------------------
 -- Header line parsing
