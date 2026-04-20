@@ -63,7 +63,34 @@ groupByCategory ::
   [TestCaseDefinition] ->
   Map String TestCaseReport ->
   Map String CategoryReport
-groupByCategory definitions results = undefined
+groupByCategory definitions results =
+  -- | Returns a map where reports are mapped to categories
+  Map.fromList (map buildCategoryReport categories)
+  where
+    -- \| Using 'myNub' so I don't have to import it ;)
+    categories = myNub (map tcdCategory definitions)
+    -- | Local functions that builds a report for a category
+    buildCategoryReport category =
+      let executed = filter isExecuted (filter (isInCategory category) definitions)
+          totalP = sum (map tcdPoints executed)
+          passedP = sum (map points executed)
+          testResults = Map.fromList (map createPair executed)
+       in (category, CategoryReport {crTotalPoints = totalP, crTestResults = testResults, crPassedPoints = passedP})
+    -- \| 'myNub' is copied from nub
+    myNub [] = []
+    myNub (x : xs) = x : myNub (filter (x /=) xs)
+    -- \| Predicate that returns True if definition is in category
+    isInCategory category definition = tcdCategory definition == category
+    -- \| Predicate that returns True if definition is executed (if it is in results)
+    isExecuted definition = Map.member (tcdName definition) results
+    -- \| Returns points of the test that passed or 0 for failed tests
+    points definition =
+      let report = results Map.! tcdName definition
+       in if tcrResult report == Passed
+            then tcdPoints definition
+            else 0
+    -- \| Creates a pair for each test in this format: (test name, test report)
+    createPair definition = (tcdName definition, results Map.! tcdName definition)
 
 -- ---------------------------------------------------------------------------
 -- Statistics
