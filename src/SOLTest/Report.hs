@@ -100,7 +100,19 @@ computeStats foundCount loadedCount selectedCount mCategoryResults = undefined
 --
 -- FLP: Implement this function.
 computeHistogram :: Map String CategoryReport -> Map String Int
-computeHistogram categories = undefined
+computeHistogram categories =
+  -- \| Defines the bins (0.0 through 0.9)
+  let bins = Map.fromList [("0.0", 0), ("0.1", 0), ("0.2", 0), ("0.3", 0), ("0.4", 0), ("0.5", 0), ("0.6", 0), ("0.7", 0), ("0.8", 0), ("0.9", 0)]
+      -- \| Defines a local function that computes the bin key, converts it to String and increments the bin
+      addCategoryToBin cr acc =
+        let passedTestCount = crPassedPoints cr
+            totalTestCount = crTotalPoints cr
+            -- \| Uses 'fromIntegral' to be able to perform decimal division
+            rate = fromIntegral passedTestCount / fromIntegral totalTestCount
+         in -- \| Uses 'Map.insertWith' and '+' to increment the adequate bin's value by 1
+            Map.insertWith (+) (rateToBin rate) 1 acc
+  -- | Right fold - goes through categories one by one from the right
+   in foldr addCategoryToBin bins categories
 
 -- | Map a pass rate in @[0, 1]@ to a histogram bin key.
 --
