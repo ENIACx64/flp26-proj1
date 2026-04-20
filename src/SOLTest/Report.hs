@@ -82,7 +82,36 @@ computeStats ::
   -- | Category reports (Nothing in dry-run mode).
   Maybe (Map String CategoryReport) ->
   TestStats
-computeStats foundCount loadedCount selectedCount mCategoryResults = undefined
+computeStats foundCount loadedCount selectedCount mCategoryResults =
+  -- \| If we have reports, build 'TestStats'
+  case mCategoryResults of
+    Just categoryResults ->
+      TestStats
+        { tsFoundTestFiles = foundCount,
+          tsLoadedTests = loadedCount,
+          tsSelectedTests = selectedCount,
+          tsPassedTests = computePassed categoryResults,
+          tsHistogram = computeHistogram categoryResults
+        }
+    -- \| Dry-run mode (0 passed tests, default histogram)
+    Nothing ->
+      TestStats
+        { tsFoundTestFiles = foundCount,
+          tsLoadedTests = loadedCount,
+          tsSelectedTests = selectedCount,
+          tsPassedTests = 0,
+          tsHistogram = Map.fromList [("0.0", 0), ("0.1", 0), ("0.2", 0), ("0.3", 0), ("0.4", 0), ("0.5", 0), ("0.6", 0), ("0.7", 0), ("0.8", 0), ("0.9", 0)]
+        }
+  where
+    -- \| Local function that sums passed tests
+    computePassed categoryResults =
+      -- \| 'Map.elems' returns the category reports, we want to sum sums of passed tests in each category
+      sum (map countPassedInCategory (Map.elems categoryResults))
+      where
+        -- \| 'length' is used because the filtered list contains only the tests that passed -> length of this list == number of successful tests in this category
+        countPassedInCategory category = length (filter isPassed (Map.elems (crTestResults category)))
+        -- \| Predicate that returns True if the test passed
+        isPassed r = tcrResult r == Passed
 
 -- ---------------------------------------------------------------------------
 -- Histogram
@@ -111,8 +140,8 @@ computeHistogram categories =
             rate = fromIntegral passedTestCount / fromIntegral totalTestCount
          in -- \| Uses 'Map.insertWith' and '+' to increment the adequate bin's value by 1
             Map.insertWith (+) (rateToBin rate) 1 acc
-  -- | Right fold - goes through categories one by one from the right
-   in foldr addCategoryToBin bins categories
+   in -- \| Right fold - goes through categories one by one from the right
+      foldr addCategoryToBin bins categories
 
 -- | Map a pass rate in @[0, 1]@ to a histogram bin key.
 --
