@@ -2,4 +2,6 @@
 
 https://github.com/ENIACx64/flp26-proj1
 
-TODO
+# Odkaz pro naklonování
+
+https://github.com/ENIACx64/flp26-proj1.git
